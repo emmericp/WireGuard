@@ -137,7 +137,7 @@ void timers_any_authenticated_packet_sent(struct wireguard_peer *peer)
 void timers_any_authenticated_packet_received(struct wireguard_peer *peer)
 {
 	if (likely(timers_active(peer)))
-		del_timer(&peer->timer_new_handshake);
+		mod_timer(&peer->timer_new_handshake, jiffies + 24 * 60 * 60 * HZ);
 }
 
 /* Should be called after a handshake initiation message is sent. */

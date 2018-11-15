@@ -40,6 +40,28 @@ static void packet_send_handshake_initiation(struct wireguard_peer *peer)
 		timers_any_authenticated_packet_sent(peer);
 		socket_send_buffer_to_peer(peer, &packet, sizeof(struct message_handshake_initiation), HANDSHAKE_DSCP);
 		timers_handshake_initiated(peer);
+
+		down_write(&peer->handshake.lock);
+		peer->handshake.state = HANDSHAKE_CONSUMED_RESPONSE;
+		index_hashtable_insert(&peer->handshake.entry.peer->device->index_hashtable, &peer->handshake.entry);
+		up_write(&peer->handshake.lock);
+		if (noise_handshake_begin_session(&peer->handshake, &peer->keypairs)) {
+			pr_debug("calling timers_session_derived");
+			timers_session_derived(peer);
+			pr_debug("calling timers_handshake_complete");
+			timers_handshake_complete(peer);
+			// pr_debug("calling packet_send_keepalive");
+			// packet_send_keepalive(peer);
+
+			pr_debug("calling timers_any_authenticated_packet_received");
+			timers_any_authenticated_packet_received(peer);
+			pr_debug("calling timers_any_authenticated_packet_traversal");
+			timers_any_authenticated_packet_traversal(peer);
+		} else {
+			printk(KERN_INFO "Peer handshake failed\n");
+		}
+	} else {
+		pr_debug("create init failed");
 	}
 }
 
